@@ -1,10 +1,12 @@
 package frc.robot.commands.swerve
 
+import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.kinematics.ChassisSpeeds
 import edu.wpi.first.wpilibj2.command.Command
 import frc.robot.subsystem.swerve.Drivebase
 import java.util.function.BooleanSupplier
 import java.util.function.DoubleSupplier
+import kotlin.math.hypot
 
 class AccelerationControlledDriveCommand(
     private val drivebase: Drivebase,
@@ -16,6 +18,7 @@ class AccelerationControlledDriveCommand(
     private val cycleTime = 0.02
     private val maxForwardsAccel = 1000.0
     private val maxSidewaysAccel = 1000.0
+    private val maxSkidAccel = 1000.0
 
     init {
         // each subsystem used by the command must be passed into the addRequirements() method
@@ -23,7 +26,7 @@ class AccelerationControlledDriveCommand(
     }
 
     override fun execute() {
-        val desiredSpeeds: ChassisSpeeds =
+        var desiredSpeeds: ChassisSpeeds =
             if(isFieldOriented.asBoolean){
                 ChassisSpeeds.fromFieldRelativeSpeeds(
                     xVel.asDouble,
@@ -40,6 +43,20 @@ class AccelerationControlledDriveCommand(
             }
 
         val currentSpeeds = drivebase.robotRelativeSpeeds
+        
+        // Skid limiter
+        val currVec = VecBuilder.fill(currentSpeeds.vxMetersPerSecond, currentSpeeds.vyMetersPerSecond)
+        val desiredVec = VecBuilder.fill(desiredSpeeds.vxMetersPerSecond, desiredSpeeds.vyMetersPerSecond)
+        
+        val accelVec = desiredVec - currVec
+        
+        val accelMag = accelVec.norm()
+        val limitedAccelMag = accelMag.coerceIn(-maxSkidAccel, maxSkidAccel)
+        
+        val limitedAccelVec = accelVec * limitedAccelMag
+        
+        desiredSpeeds = ChassisSpeeds(limitedAccelVec[0], limitedAccelVec[1], desiredSpeeds.omegaRadiansPerSecond)
+        
 
         var forwardsAccel = (desiredSpeeds.vxMetersPerSecond - currentSpeeds.vxMetersPerSecond) / cycleTime
         var sidewaysAccel = (desiredSpeeds.vyMetersPerSecond - currentSpeeds.vyMetersPerSecond) / cycleTime
@@ -48,6 +65,7 @@ class AccelerationControlledDriveCommand(
         // Limit to stop the robot from tilting
         forwardsAccel = forwardsAccel.coerceIn(-maxForwardsAccel, maxForwardsAccel)
         sidewaysAccel = sidewaysAccel.coerceIn(-maxSidewaysAccel, maxSidewaysAccel)
+        
 
         drivebase.applyChassisSpeeds(
             ChassisSpeeds(
