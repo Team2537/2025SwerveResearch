@@ -53,7 +53,7 @@ class AccelerationControlledDriveCommand(
         val accelMag = accelVec.norm()
         val limitedAccelMag = accelMag.coerceIn(-maxSkidAccel, maxSkidAccel)
         
-        val limitedAccelVec = accelVec * limitedAccelMag
+        val limitedAccelVec = (accelVec / accelVec.norm()) * limitedAccelMag
         
         desiredSpeeds = ChassisSpeeds(limitedAccelVec[0], limitedAccelVec[1], desiredSpeeds.omegaRadiansPerSecond)
         
