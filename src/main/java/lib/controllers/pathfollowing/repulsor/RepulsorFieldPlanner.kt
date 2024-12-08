@@ -1,0 +1,169 @@
+package lib.controllers.pathfollowing.repulsor
+
+import choreo.trajectory.SwerveSample
+import edu.wpi.first.math.geometry.Pose2d
+import edu.wpi.first.math.geometry.Rotation2d
+import edu.wpi.first.math.geometry.Translation2d
+import frc.robot.Robot
+import java.util.Optional
+import java.util.function.Supplier
+import kotlin.math.abs
+
+class RepulsorFieldPlanner {
+    private val obstacles = FIELD_OBSTACLES + WALLS
+    private var goalOpt: Optional<Translation2d> = Optional.empty()
+
+    var goal: Translation2d
+        get() = goalOpt.orElse(Translation2d.kZero)
+        set(value) {
+            goalOpt = Optional.of(value)
+            updateArrows()
+        }
+
+    val arrows: MutableList<Pose2d> = MutableList(200) { Pose2d() }
+
+    fun updateArrows() {
+        for (col in 0..19) {
+            for (row in 0..9) {
+                val translation = Translation2d(col * FIELD_LENGTH / 20.0, row * FIELD_WIDTH / 10.0)
+                val rotation = getForce(translation).angle
+                arrows[col * 10 + row] = Pose2d(translation, rotation)
+            }
+        }
+    }
+
+    fun getForceToGoal(position: Translation2d): Force {
+        return goalOpt.map { goal ->
+            val displacement = goal - position
+            if (displacement.norm < 0.0001) {
+                return@map Force()
+            }
+
+            val angle = displacement.angle
+            val mag = GOAL_STRENGTH * (1 + 1.0 / (0.0001 + displacement.norm))
+
+            Force(mag, angle)
+        }.orElse(Force())
+    }
+
+    fun getForce(position: Translation2d): Force {
+        var goalForce = getForceToGoal(position)
+        obstacles.forEach { obs ->
+            goalForce += obs.getForceAtPosition(position)
+        }
+        return goalForce
+    }
+
+    fun getSample(
+        position: Translation2d,
+        rot: Rotation2d,
+        vx: Double,
+        vy: Double,
+        omega: Double,
+    ): SwerveSample {
+        return SwerveSample(
+            0.0,
+            position.x,
+            position.y,
+            rot.radians,
+            vx, vy, omega,
+            0.0, 0.0, 0.0,
+            doubleArrayOf(),
+            doubleArrayOf(),
+        )
+    }
+
+    fun getNextSample(
+        currPose: Supplier<Pose2d>,
+        stepSizeMeters: Double,
+    ): SwerveSample {
+        val curr = currPose.get()
+        if (goalOpt.isEmpty) {
+            return getSample(curr.translation, curr.rotation, 0.0, 0.0, 0.0)
+        } else {
+            val goal = goalOpt.get()
+            val currTrans = curr.translation
+            val err = currTrans - goal
+            if (err.norm < stepSizeMeters * 1.5) {
+                return getSample(goal, curr.rotation, 0.0, 0.0, 0.0)
+            } else {
+                val netForce = getForce(currTrans)
+                val step = Translation2d(stepSizeMeters, netForce.angle)
+                val intermediateGoal = currTrans + step
+                return getSample(intermediateGoal, curr.rotation, step.x / 0.02, step.y / 0.02, 0.0)
+            }
+        }
+    }
+
+    companion object {
+        val GOAL_STRENGTH = 1.0
+        val FIELD_OBSTACLES =
+            listOf(
+                PointObstacle(Translation2d(5.56, 2.74), 0.7, true),
+                PointObstacle(Translation2d(3.45, 4.07), 0.7, true),
+                PointObstacle(Translation2d(5.56, 5.35), 0.7, true),
+                PointObstacle(Translation2d(11.0, 2.74), 0.7, true),
+                PointObstacle(Translation2d(13.27, 4.07), 0.7, true),
+                PointObstacle(Translation2d(11.0, 5.35), 0.7, true),
+            )
+
+        val FIELD_LENGTH = Robot.field.fieldLength
+        val FIELD_WIDTH = Robot.field.fieldWidth
+
+        val WALLS =
+            listOf(
+                HorizontalObstacle(0.0, 0.5, true),
+                HorizontalObstacle(FIELD_WIDTH, 0.5, false),
+                VerticalObstacle(0.0, 0.5, true),
+                VerticalObstacle(FIELD_LENGTH, 0.5, false),
+            )
+
+        abstract class Obstacle(val strength: Double = 1.0, val positive: Boolean = true) {
+            abstract fun getForceAtPosition(position: Translation2d): Force
+
+            protected fun forceMagnitudeFromDistance(distance: Double): Double {
+                val forceMag = strength / (0.00001 + abs(distance * distance))
+                return if (positive) forceMag else -forceMag
+            }
+        }
+
+        class PointObstacle(
+            val loc: Translation2d,
+            strength: Double = 1.0,
+            positive: Boolean = true,
+        ) : Obstacle(strength, positive) {
+            override fun getForceAtPosition(position: Translation2d): Force {
+                return Force(
+                    forceMagnitudeFromDistance(loc.getDistance(position)),
+                    position.minus(loc).angle,
+                )
+            }
+        }
+
+        class HorizontalObstacle(
+            val y: Double,
+            strength: Double = 1.0,
+            positive: Boolean = true,
+        ) : Obstacle(strength, positive) {
+            override fun getForceAtPosition(position: Translation2d): Force {
+                return Force(
+                    0.0,
+                    forceMagnitudeFromDistance(y - position.y),
+                )
+            }
+        }
+
+        class VerticalObstacle(
+            val x: Double,
+            strength: Double = 1.0,
+            positive: Boolean = true,
+        ) : Obstacle(strength, positive) {
+            override fun getForceAtPosition(position: Translation2d): Force {
+                return Force(
+                    forceMagnitudeFromDistance(x - position.x),
+                    0.0,
+                )
+            }
+        }
+    }
+}
