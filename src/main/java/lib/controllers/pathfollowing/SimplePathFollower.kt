@@ -21,20 +21,21 @@ class SimplePathFollower(
     private val xController = xFollowerGains.buildPIDController()
     private val yController = yFollowerGains.buildPIDController()
     private val thetaController = thetaFollowerGains.buildPIDController()
-    
+
     override fun accept(sample: SwerveSample) {
         val pose = poseSupplier.get()
-        
+
         val xOutput = xController.calculate(pose.x, sample.x)
         val yOutput = yController.calculate(pose.y, sample.y)
         val thetaOutput = thetaController.calculate(pose.rotation.radians, sample.heading)
-        
-        val speeds = ChassisSpeeds(
-            xOutput + sample.vx,
-            yOutput + sample.vy,
-            thetaOutput + sample.omega,
-        )
-        
+
+        val speeds =
+            ChassisSpeeds(
+                xOutput + sample.vx,
+                yOutput + sample.vy,
+                thetaOutput + sample.omega,
+            )
+
         speedConsumer.accept(speeds)
     }
 }
