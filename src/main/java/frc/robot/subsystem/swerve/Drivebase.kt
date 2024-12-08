@@ -19,7 +19,6 @@ import lib.controllers.ControllerGains
 import lib.controllers.pathfollowing.SimplePathFollower
 import org.littletonrobotics.junction.Logger
 import java.util.function.DoubleSupplier
-import javax.naming.ldap.Control
 
 class Drivebase : SubsystemBase("drivebase") {
     val moduleTranslations =
@@ -61,17 +60,18 @@ class Drivebase : SubsystemBase("drivebase") {
     val robotRelativeSpeeds: ChassisSpeeds
         get() =
             kinematics.toChassisSpeeds(*measuredModuleStates)
-    
+
     val pose: Pose2d
         get() = poseEstimator.estimatedPosition
-    
-    val autoController = SimplePathFollower(
-        ControllerGains(),
-        ControllerGains(),
-        ControllerGains(),
-        ::applyChassisSpeeds,
-        ::pose
-    )
+
+    val autoController =
+        SimplePathFollower(
+            ControllerGains(),
+            ControllerGains(),
+            ControllerGains(),
+            ::applyChassisSpeeds,
+            ::pose,
+        )
 
     fun applyChassisSpeeds(speeds: ChassisSpeeds) {
         val moduleStates = kinematics.toSwerveModuleStates(speeds)
