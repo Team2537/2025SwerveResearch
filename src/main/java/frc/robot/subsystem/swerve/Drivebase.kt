@@ -17,8 +17,10 @@ import frc.robot.subsystems.swerve.gyro.GyroIOPigeon2
 import frc.robot.subsystems.swerve.gyro.GyroIOSim
 import lib.controllers.ControllerGains
 import lib.controllers.pathfollowing.SimplePathFollower
+import lib.controllers.pathfollowing.repulsor.RepulsorFieldPlanner
 import org.littletonrobotics.junction.Logger
 import java.util.function.DoubleSupplier
+import java.util.function.Supplier
 
 class Drivebase : SubsystemBase("drivebase") {
     val moduleTranslations =
@@ -32,13 +34,6 @@ class Drivebase : SubsystemBase("drivebase") {
     val modules: List<SwerveModule> =
         ModuleConfig.entries.mapIndexed { index, config ->
             SwerveModule(config, moduleTranslations[index])
-        }
-
-    val gyro: GyroIO =
-        when (RobotType.robot) {
-            RobotType.Robot.BOUNTY -> GyroIOPigeon2("rio", 13)
-            RobotType.Robot.SIM -> GyroIOSim(::robotRelativeSpeeds)
-            else -> object : GyroIO {}
         }
 
     val gyroInputs = GyroIO.GyroInputs()
@@ -58,11 +53,12 @@ class Drivebase : SubsystemBase("drivebase") {
     val targetModuleStates = Array(4) { SwerveModuleState() }
 
     val robotRelativeSpeeds: ChassisSpeeds
-        get() =
-            kinematics.toChassisSpeeds(*measuredModuleStates)
+        get() = kinematics.toChassisSpeeds(*measuredModuleStates)
 
     val pose: Pose2d
         get() = poseEstimator.estimatedPosition
+
+    val fieldPlanner = RepulsorFieldPlanner()
 
     val autoController =
         SimplePathFollower(
@@ -72,6 +68,13 @@ class Drivebase : SubsystemBase("drivebase") {
             ::applyChassisSpeeds,
             ::pose,
         )
+
+    val gyro: GyroIO =
+        when (RobotType.robot) {
+            RobotType.Robot.BOUNTY -> GyroIOPigeon2("rio", 13)
+            RobotType.Robot.SIM -> GyroIOSim(::robotRelativeSpeeds)
+            else -> object : GyroIO {}
+        }
 
     fun applyChassisSpeeds(speeds: ChassisSpeeds) {
         val moduleStates = kinematics.toSwerveModuleStates(speeds)
@@ -98,6 +101,13 @@ class Drivebase : SubsystemBase("drivebase") {
         }
     }
 
+    fun getSendToPoseCmd(pose: Supplier<Pose2d>): Command {
+        return run {
+            fieldPlanner.goal = pose.get().translation
+            autoController.accept(fieldPlanner.getNextSample(::pose, 0.1))
+        }
+    }
+
     override fun periodic() {
         modules.forEachIndexed { index, module ->
             module.updateInputs()
@@ -116,6 +126,7 @@ class Drivebase : SubsystemBase("drivebase") {
         Logger.recordOutput("$name/measuredModuleStates", *measuredModuleStates)
         Logger.recordOutput("$name/pose", Pose2d.struct, poseEstimator.estimatedPosition)
         Logger.recordOutput("$name/robotRelativeSpeeds", robotRelativeSpeeds)
+        Logger.recordOutput("$name/fieldPlanner", *fieldPlanner.arrows.toTypedArray())
     }
 
     companion object {
