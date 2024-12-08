@@ -24,6 +24,7 @@ object Robot : LoggedRobot() {
                     { -MathUtil.applyDeadband(driverController.leftY, 0.05).pow(3) * Drivebase.maxVelocity },
                     { -MathUtil.applyDeadband(driverController.leftX, 0.05).pow(3) * Drivebase.maxVelocity },
                     { -MathUtil.applyDeadband(driverController.rightX, 0.05) * 2 * Math.PI },
+                    { false },
                 )
         }
 
