@@ -1,5 +1,6 @@
 package frc.robot.subsystem.swerve
 
+import choreo.trajectory.SwerveSample
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
 import edu.wpi.first.math.geometry.Pose2d
 import edu.wpi.first.math.geometry.Translation2d
@@ -8,6 +9,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics
 import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
 import edu.wpi.first.math.util.Units.inchesToMeters
+import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
 import edu.wpi.first.wpilibj2.command.SubsystemBase
 import frc.robot.RobotType
@@ -122,11 +124,25 @@ class Drivebase : SubsystemBase("drivebase") {
             modulePositions,
         )
 
+        if (RobotBase.isSimulation()) {
+            createLoggedRepulsorPath()
+        }
+
         Logger.recordOutput("$name/targetModuleStates", *targetModuleStates)
         Logger.recordOutput("$name/measuredModuleStates", *measuredModuleStates)
         Logger.recordOutput("$name/pose", Pose2d.struct, poseEstimator.estimatedPosition)
         Logger.recordOutput("$name/robotRelativeSpeeds", robotRelativeSpeeds)
         Logger.recordOutput("$name/fieldPlanner", *fieldPlanner.arrows.toTypedArray())
+    }
+
+    private fun createLoggedRepulsorPath() {
+        val trajectory: MutableList<SwerveSample> = mutableListOf()
+        val sample = fieldPlanner.getNextSample(::pose, 0.1)
+        trajectory.add(sample)
+        for (i in 0..400) {
+            trajectory.add(fieldPlanner.getNextSample({ trajectory.last().pose }, 0.1))
+        }
+        Logger.recordOutput("$name/repulsorTrajectory", *trajectory.map { it.pose }.toTypedArray())
     }
 
     companion object {
