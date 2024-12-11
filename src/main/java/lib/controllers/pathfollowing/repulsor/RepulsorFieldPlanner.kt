@@ -4,6 +4,7 @@ import choreo.trajectory.SwerveSample
 import edu.wpi.first.math.geometry.Pose2d
 import edu.wpi.first.math.geometry.Rotation2d
 import edu.wpi.first.math.geometry.Translation2d
+import edu.wpi.first.wpilibj.RobotBase
 import frc.robot.Robot
 import java.util.Optional
 import java.util.function.Supplier
@@ -24,11 +25,13 @@ class RepulsorFieldPlanner {
     val arrows: MutableList<Pose2d> = MutableList(200) { Pose2d() }
 
     fun updateArrows() {
-        for (col in 0..19) {
-            for (row in 0..9) {
-                val translation = Translation2d(col * FIELD_LENGTH / 20.0, row * FIELD_WIDTH / 10.0)
-                val rotation = getForce(translation).angle
-                arrows[col * 10 + row] = Pose2d(translation, rotation)
+        if(RobotBase.isSimulation()) {
+            for (col in 0..19) {
+                for (row in 0..9) {
+                    val translation = Translation2d(col * FIELD_LENGTH / 20.0, row * FIELD_WIDTH / 10.0)
+                    val rotation = getForce(translation).angle
+                    arrows[col * 10 + row] = Pose2d(translation, rotation)
+                }
             }
         }
     }
