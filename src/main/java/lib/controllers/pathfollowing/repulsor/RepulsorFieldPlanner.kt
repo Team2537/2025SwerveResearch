@@ -22,15 +22,15 @@ class RepulsorFieldPlanner {
             updateArrows()
         }
 
-    val arrows: MutableList<Pose2d> = MutableList(200) { Pose2d() }
+    val arrows: MutableList<Pose2d> = MutableList(VERTICAL_ARROW_COUNT * HORIZONTAL_ARROW_COUNT) { Pose2d() }
 
     fun updateArrows() {
-        if(RobotBase.isSimulation()) {
-            for (col in 0..19) {
-                for (row in 0..9) {
-                    val translation = Translation2d(col * FIELD_LENGTH / 20.0, row * FIELD_WIDTH / 10.0)
+        if (RobotBase.isSimulation()) {
+            for (col in 0..<HORIZONTAL_ARROW_COUNT) {
+                for (row in 0..<VERTICAL_ARROW_COUNT) {
+                    val translation = Translation2d(col * FIELD_LENGTH / HORIZONTAL_ARROW_COUNT, row * FIELD_WIDTH / VERTICAL_ARROW_COUNT)
                     val rotation = getForce(translation).angle
-                    arrows[col * 10 + row] = Pose2d(translation, rotation)
+                    arrows[col * VERTICAL_ARROW_COUNT + row] = Pose2d(translation, rotation)
                 }
             }
         }
@@ -115,6 +115,9 @@ class RepulsorFieldPlanner {
 
         val FIELD_LENGTH = Robot.field.fieldLength
         val FIELD_WIDTH = Robot.field.fieldWidth
+
+        const val HORIZONTAL_ARROW_COUNT = 20
+        const val VERTICAL_ARROW_COUNT = 10
 
         val WALLS =
             listOf(
