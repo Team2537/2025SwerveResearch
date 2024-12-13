@@ -47,13 +47,13 @@ class ModuleIOSim(
         inputs.drivePosition.mut_replace(
             angularToLinearD(
                 driveMotorSim.angularPosition,
-                SwerveModule.wheelDiameter.divide(2.0),
+                SwerveModule.wheelDiameter / (2.0),
             ),
         )
         inputs.driveVelocity.mut_replace(
             angularToLinearV(
                 driveMotorSim.angularVelocity,
-                SwerveModule.wheelDiameter.divide(2.0),
+                SwerveModule.wheelDiameter / (2.0),
             ),
         )
         inputs.driveMotorVolts.mut_replace(driveMotorSim.inputVoltage, Volts)
@@ -87,7 +87,7 @@ class ModuleIOSim(
     }
 
     override fun runDriveVelocitySetpoint(velocityMetersPerSecond: Double) {
-        val velocity = linearToAngularV(velocityMetersPerSecond, SwerveModule.wheelDiameter.divide(2.0))
+        val velocity = linearToAngularV(velocityMetersPerSecond, SwerveModule.wheelDiameter / (2.0))
         val feedforward = driveFeedforward.calculate(velocity)
         val output =
             (

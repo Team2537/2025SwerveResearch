@@ -1,6 +1,6 @@
 plugins {
     id "java"
-    id "edu.wpi.first.GradleRIO" version "2025.1.1-beta-1"
+    id "edu.wpi.first.GradleRIO" version "2025.1.1-beta-2"
     id 'org.jetbrains.kotlin.jvm' version '2.0.21'
     id "com.diffplug.spotless" version "6.25.0"
 }
@@ -14,7 +14,6 @@ spotless {
 compileKotlin.dependsOn(spotlessApply)
 
 repositories {
-    mavenCentral()
     maven {
         url = uri("https://maven.pkg.github.com/Mechanical-Advantage/AdvantageKit")
         credentials {
@@ -24,6 +23,12 @@ repositories {
     }
     mavenLocal()
 }
+
+task(replayWatch, type: JavaExec) {
+    mainClass = "org.littletonrobotics.junction.ReplayWatch"
+    classpath = sourceSets.main.runtimeClasspath
+}
+
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -94,7 +99,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
-    annotationProcessor "org.littletonrobotics.akit.junction:junction-autolog:$akitJson.version"
+    annotationProcessor "org.littletonrobotics.akit:akit-autolog:$akitJson.version"
 }
 
 test {
@@ -125,13 +130,3 @@ wpi.java.configureTestTasks(test)
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
 }
-
-configurations.all {
-    exclude group: "edu.wpi.first.wpilibj"
-}
-
-task(checkAkitInstall, dependsOn: "classes", type: JavaExec) {
-    mainClass = "org.littletonrobotics.junction.CheckInstall"
-    classpath = sourceSets.main.runtimeClasspath
-}
-compileJava.finalizedBy checkAkitInstall
