@@ -79,9 +79,9 @@ class Drivebase : SubsystemBase("drivebase") {
         }
 
     fun applyChassisSpeeds(speeds: ChassisSpeeds) {
-        val discreteSpeeds = ChassisSpeeds.discretize(speeds, 0.02)
+        speeds.discretize(0.02)
 
-        val moduleStates = kinematics.toSwerveModuleStates(discreteSpeeds)
+        val moduleStates = kinematics.toSwerveModuleStates(speeds)
 
         modules.forEachIndexed { index, module ->
             module.apply(moduleStates[index])
