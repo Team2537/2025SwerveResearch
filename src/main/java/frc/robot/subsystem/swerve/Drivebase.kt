@@ -8,6 +8,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics
 import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
+import edu.wpi.first.math.util.Units
 import edu.wpi.first.math.util.Units.inchesToMeters
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
@@ -21,6 +22,7 @@ import lib.controllers.ControllerGains
 import lib.controllers.pathfollowing.SimplePathFollower
 import lib.controllers.pathfollowing.repulsor.RepulsorFieldPlanner
 import org.littletonrobotics.junction.Logger
+import java.util.function.BooleanSupplier
 import java.util.function.DoubleSupplier
 import java.util.function.Supplier
 
@@ -89,19 +91,25 @@ class Drivebase : SubsystemBase("drivebase") {
         }
     }
 
-    fun robotRelativeDriveCommand(
-        xVel: DoubleSupplier,
-        yVel: DoubleSupplier,
-        thetaVel: DoubleSupplier,
+    fun getDriveCommand(
+        desiredForwards: DoubleSupplier,
+        desiredStrafe: DoubleSupplier,
+        desiredRotation: DoubleSupplier,
+        shouldFieldOrient: BooleanSupplier,
     ): Command {
         return this.run {
-            applyChassisSpeeds(
+            val speeds =
                 ChassisSpeeds(
-                    xVel.asDouble * maxVelocity,
-                    yVel.asDouble * maxVelocity,
-                    thetaVel.asDouble * maxVelocity,
-                ),
-            )
+                    desiredForwards.asDouble * maxLinearVelocity,
+                    desiredStrafe.asDouble * maxLinearVelocity,
+                    desiredRotation.asDouble * maxLinearVelocity,
+                )
+
+            if (shouldFieldOrient.asBoolean) {
+                speeds.toFieldRelativeSpeeds(gyroInputs.yaw)
+            }
+
+            applyChassisSpeeds(speeds)
         }
     }
 
@@ -120,6 +128,8 @@ class Drivebase : SubsystemBase("drivebase") {
 
         gyro.updateInputs(gyroInputs)
         Logger.processInputs("Gyro", gyroInputs)
+        
+        
 
         poseEstimator.update(
             gyroInputs.yaw,
@@ -153,7 +163,8 @@ class Drivebase : SubsystemBase("drivebase") {
                 else -> inchesToMeters(9.7859)
             }
 
-        val maxVelocity = 3.0
+        val maxLinearVelocity = Units.feetToMeters(15.0)
+        val maxAngularVelocity = Units.degreesToRadians(180.0)
 
         /**
          * Enum for storing the configuration of each swerve module.
