@@ -10,6 +10,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
 import edu.wpi.first.math.util.Units
 import edu.wpi.first.math.util.Units.inchesToMeters
+import edu.wpi.first.units.Units.RadiansPerSecond
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
 import edu.wpi.first.wpilibj2.command.SubsystemBase
@@ -21,6 +22,9 @@ import frc.robot.subsystems.swerve.gyro.GyroIOSim
 import lib.controllers.ControllerGains
 import lib.controllers.pathfollowing.SimplePathFollower
 import lib.controllers.pathfollowing.repulsor.RepulsorFieldPlanner
+import lib.math.rotationFromVector
+import lib.math.swerve.minus
+import lib.math.units.into
 import org.littletonrobotics.junction.Logger
 import java.util.function.BooleanSupplier
 import java.util.function.DoubleSupplier
@@ -53,6 +57,9 @@ class Drivebase : SubsystemBase("drivebase") {
 
     val measuredModuleStates: Array<SwerveModuleState>
         get() = modules.map { it.state }.toTypedArray()
+
+    val rotationalStateComponents: Array<SwerveModuleState> = Array(4) { SwerveModuleState() }
+    val translationalStateComponents: Array<SwerveModuleState> = Array(4) { SwerveModuleState() }
 
     val targetModuleStates = Array(4) { SwerveModuleState() }
 
@@ -102,12 +109,14 @@ class Drivebase : SubsystemBase("drivebase") {
                 ChassisSpeeds(
                     desiredForwards.asDouble * maxLinearVelocity,
                     desiredStrafe.asDouble * maxLinearVelocity,
-                    desiredRotation.asDouble * maxLinearVelocity,
+                    desiredRotation.asDouble * maxAngularVelocity,
                 )
 
             if (shouldFieldOrient.asBoolean) {
                 speeds.toFieldRelativeSpeeds(gyroInputs.yaw)
             }
+
+            Logger.recordOutput("$name/desiredSpeeds", speeds)
 
             applyChassisSpeeds(speeds)
         }
@@ -128,8 +137,19 @@ class Drivebase : SubsystemBase("drivebase") {
 
         gyro.updateInputs(gyroInputs)
         Logger.processInputs("Gyro", gyroInputs)
-        
-        
+
+        modules.forEachIndexed { index, swerveModule ->
+            val rotationalState =
+                SwerveModuleState(
+                    (gyroInputs.yawVelocity into RadiansPerSecond) * moduleTranslations[index].norm,
+                    rotationFromVector(swerveModule.positiveRotVec),
+                )
+
+            rotationalStateComponents[index] = rotationalState
+
+            val translationalState = swerveModule.state - rotationalState
+            translationalStateComponents[index] = translationalState
+        }
 
         poseEstimator.update(
             gyroInputs.yaw,
@@ -145,6 +165,8 @@ class Drivebase : SubsystemBase("drivebase") {
         Logger.recordOutput("$name/pose", Pose2d.struct, poseEstimator.estimatedPosition)
         Logger.recordOutput("$name/robotRelativeSpeeds", robotRelativeSpeeds)
         Logger.recordOutput("$name/fieldPlanner", *fieldPlanner.arrows.toTypedArray())
+        Logger.recordOutput("$name/rotationalStateComponents", *rotationalStateComponents)
+        Logger.recordOutput("$name/translationalStateComponents", *translationalStateComponents)
     }
 
     private fun createLoggedRepulsorPath() {
@@ -164,7 +186,7 @@ class Drivebase : SubsystemBase("drivebase") {
             }
 
         val maxLinearVelocity = Units.feetToMeters(15.0)
-        val maxAngularVelocity = Units.degreesToRadians(180.0)
+        val maxAngularVelocity = Units.degreesToRadians(360.0)
 
         /**
          * Enum for storing the configuration of each swerve module.
