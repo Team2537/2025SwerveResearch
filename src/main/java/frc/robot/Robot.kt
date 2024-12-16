@@ -2,6 +2,7 @@ package frc.robot
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout
 import edu.wpi.first.apriltag.AprilTagFields
+import edu.wpi.first.math.MathUtil
 import edu.wpi.first.math.geometry.Pose2d
 import edu.wpi.first.math.geometry.Rotation2d
 import edu.wpi.first.units.Units.Volts
@@ -9,6 +10,7 @@ import edu.wpi.first.units.measure.Voltage
 import edu.wpi.first.wpilibj2.command.CommandScheduler
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController
 import frc.robot.subsystem.swerve.Drivebase
+import lib.commands.not
 import lib.math.units.measuredIn
 import org.littletonrobotics.junction.LogFileUtil
 import org.littletonrobotics.junction.LoggedRobot
@@ -16,6 +18,7 @@ import org.littletonrobotics.junction.Logger
 import org.littletonrobotics.junction.networktables.NT4Publisher
 import org.littletonrobotics.junction.wpilog.WPILOGReader
 import org.littletonrobotics.junction.wpilog.WPILOGWriter
+import kotlin.math.pow
 
 object Robot : LoggedRobot() {
     val driverController = CommandXboxController(0)
@@ -25,10 +28,11 @@ object Robot : LoggedRobot() {
     val drivebase =
         Drivebase().apply {
             defaultCommand =
-                robotRelativeDriveCommand(
-                    { -driverController.leftY },
-                    { -driverController.leftX },
-                    { -driverController.rightX },
+                getDriveCommand(
+                    { MathUtil.applyDeadband(-driverController.leftY, 0.05).pow(3) },
+                    { MathUtil.applyDeadband(-driverController.leftX, 0.05).pow(3) },
+                    { MathUtil.applyDeadband(-driverController.rightX, 0.05) },
+                    !driverController.leftBumper(),
                 )
         }
 
