@@ -10,7 +10,12 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
 import edu.wpi.first.math.util.Units
 import edu.wpi.first.math.util.Units.inchesToMeters
+import edu.wpi.first.units.Units.FeetPerSecond
+import edu.wpi.first.units.Units.Meters
+import edu.wpi.first.units.Units.MetersPerSecond
 import edu.wpi.first.units.Units.RadiansPerSecond
+import edu.wpi.first.units.measure.AngularVelocity
+import edu.wpi.first.units.measure.Distance
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
 import edu.wpi.first.wpilibj2.command.SubsystemBase
@@ -25,10 +30,12 @@ import lib.controllers.pathfollowing.repulsor.RepulsorFieldPlanner
 import lib.math.rotationFromVector
 import lib.math.swerve.minus
 import lib.math.units.into
+import lib.math.units.measuredIn
 import org.littletonrobotics.junction.Logger
 import java.util.function.BooleanSupplier
 import java.util.function.DoubleSupplier
 import java.util.function.Supplier
+import kotlin.math.sqrt
 
 class Drivebase : SubsystemBase("drivebase") {
     val moduleTranslations =
@@ -91,6 +98,13 @@ class Drivebase : SubsystemBase("drivebase") {
         speeds.discretize(0.02)
 
         val moduleStates = kinematics.toSwerveModuleStates(speeds)
+        
+        SwerveDriveKinematics.desaturateWheelSpeeds(
+            moduleStates,
+            maxModuleVelocity,
+            maxModuleVelocity,
+            maxAngularVelocity,
+        )
 
         modules.forEachIndexed { index, module ->
             module.apply(moduleStates[index])
@@ -107,13 +121,14 @@ class Drivebase : SubsystemBase("drivebase") {
         return this.run {
             val speeds =
                 ChassisSpeeds(
-                    desiredForwards.asDouble * maxLinearVelocity,
-                    desiredStrafe.asDouble * maxLinearVelocity,
-                    desiredRotation.asDouble * maxAngularVelocity,
+                    desiredForwards.asDouble * (maxModuleVelocity into MetersPerSecond),
+                    desiredStrafe.asDouble * (maxModuleVelocity into MetersPerSecond),
+                    desiredRotation.asDouble * (maxAngularVelocity into RadiansPerSecond),
                 )
 
             if (shouldFieldOrient.asBoolean) {
                 speeds.toFieldRelativeSpeeds(gyroInputs.yaw)
+                println("yaw: ${gyroInputs.yaw}")
             }
 
             Logger.recordOutput("$name/desiredSpeeds", speeds)
@@ -185,8 +200,10 @@ class Drivebase : SubsystemBase("drivebase") {
                 else -> inchesToMeters(9.7859)
             }
 
-        val maxLinearVelocity = Units.feetToMeters(15.0)
-        val maxAngularVelocity = Units.degreesToRadians(360.0)
+        val maxModuleVelocity = FeetPerSecond.of(15.5)
+        val chassisRadius: Distance = ((moduleOffset * sqrt(2.0)) measuredIn Meters) as Distance
+        val maxAngularVelocity: AngularVelocity =
+            RadiansPerSecond.of(((maxModuleVelocity into MetersPerSecond) / (chassisRadius into Meters)) )
 
         /**
          * Enum for storing the configuration of each swerve module.
