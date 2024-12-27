@@ -1,6 +1,7 @@
 package frc.robot.subsystem.swerve
 
 import choreo.trajectory.SwerveSample
+import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
 import edu.wpi.first.math.geometry.Pose2d
 import edu.wpi.first.math.geometry.Translation2d
@@ -74,7 +75,7 @@ class Drivebase : SubsystemBase("drivebase") {
         get() = kinematics.toChassisSpeeds(*measuredModuleStates)
 
     val pose: Pose2d
-        get() = poseEstimator.estimatedPosition
+        get() = Pose2d(poseEstimator.estimatedPosition.translation, gyroInputs.yaw)
 
     val fieldPlanner = RepulsorFieldPlanner()
 
@@ -142,6 +143,11 @@ class Drivebase : SubsystemBase("drivebase") {
             fieldPlanner.goal = pose.get().translation
             autoController.accept(fieldPlanner.getNextSample(::pose, 0.1))
         }
+    }
+    
+    fun addVisionMeasurement(pose: Pose2d, timestamp: Double, stddevX: Double, stddevY: Double) {
+        poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(stddevX, stddevY, 99999999.0))
+        poseEstimator.addVisionMeasurement(pose, timestamp)
     }
 
     override fun periodic() {
