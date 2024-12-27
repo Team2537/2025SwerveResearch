@@ -30,12 +30,13 @@ class SimplePathFollower(
         val thetaOutput = thetaController.calculate(pose.rotation.radians, sample.heading)
 
         val speeds =
-            ChassisSpeeds.fromFieldRelativeSpeeds(
+            ChassisSpeeds(
                 xOutput + sample.vx,
                 yOutput + sample.vy,
                 thetaOutput + sample.omega,
-                pose.rotation,
             )
+        
+        speeds.toFieldRelativeSpeeds(pose.rotation)
 
         speedConsumer.accept(speeds)
     }
