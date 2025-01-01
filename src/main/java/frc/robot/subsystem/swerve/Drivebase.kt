@@ -9,7 +9,6 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics
 import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
-import edu.wpi.first.math.util.Units
 import edu.wpi.first.math.util.Units.inchesToMeters
 import edu.wpi.first.units.Units.FeetPerSecond
 import edu.wpi.first.units.Units.Meters
@@ -99,9 +98,10 @@ class Drivebase : SubsystemBase("drivebase") {
         speeds.discretize(0.02)
 
         val moduleStates = kinematics.toSwerveModuleStates(speeds)
-        
+
         SwerveDriveKinematics.desaturateWheelSpeeds(
             moduleStates,
+            speeds,
             maxModuleVelocity,
             maxModuleVelocity,
             maxAngularVelocity,
@@ -144,8 +144,13 @@ class Drivebase : SubsystemBase("drivebase") {
             autoController.accept(fieldPlanner.getNextSample(::pose, 0.1))
         }
     }
-    
-    fun addVisionMeasurement(pose: Pose2d, timestamp: Double, stddevX: Double, stddevY: Double) {
+
+    fun addVisionMeasurement(
+        pose: Pose2d,
+        timestamp: Double,
+        stddevX: Double,
+        stddevY: Double,
+    ) {
         poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(stddevX, stddevY, 99999999.0))
         poseEstimator.addVisionMeasurement(pose, timestamp)
     }
@@ -209,7 +214,7 @@ class Drivebase : SubsystemBase("drivebase") {
         val maxModuleVelocity = FeetPerSecond.of(15.5)
         val chassisRadius: Distance = ((moduleOffset * sqrt(2.0)) measuredIn Meters) as Distance
         val maxAngularVelocity: AngularVelocity =
-            RadiansPerSecond.of(((maxModuleVelocity into MetersPerSecond) / (chassisRadius into Meters)) )
+            RadiansPerSecond.of(((maxModuleVelocity into MetersPerSecond) / (chassisRadius into Meters)))
 
         /**
          * Enum for storing the configuration of each swerve module.

@@ -56,7 +56,6 @@ object Robot : LoggedRobot() {
                 Logger.addDataReceiver(NT4Publisher())
             }
         }
-
         Logger.start()
 
         configureBindings()

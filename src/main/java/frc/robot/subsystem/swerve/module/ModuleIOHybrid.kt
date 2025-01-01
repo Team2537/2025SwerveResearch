@@ -72,12 +72,12 @@ class ModuleIOHybrid(
             it.configurator.apply(config)
         }
 
-    val drivePosition = driveMotor.position.clone()
-    val driveVelocity = driveMotor.velocity.clone()
-    val driveSupplyVolts = driveMotor.supplyVoltage.clone()
-    val driveMotorVolts = driveMotor.motorVoltage.clone()
-    val driveStatorCurrent = driveMotor.statorCurrent.clone()
-    val driveSupplyCurrent = driveMotor.supplyCurrent.clone()
+    private val drivePosition = driveMotor.position.clone()
+    private val driveVelocity = driveMotor.velocity.clone()
+    private val driveSupplyVolts = driveMotor.supplyVoltage.clone()
+    private val driveMotorVolts = driveMotor.motorVoltage.clone()
+    private val driveStatorCurrent = driveMotor.statorCurrent.clone()
+    private val driveSupplyCurrent = driveMotor.supplyCurrent.clone()
 
     val turnMotor: SparkMax =
         SparkMax(moduleConfig.turnID, MotorType.kBrushless).also {

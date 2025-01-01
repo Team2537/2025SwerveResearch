@@ -14,11 +14,16 @@ data class ControllerGains(
     var kA: Double = 0.0,
     var kG: Double = 0.0,
 ) {
-    fun buildPIDController() = PIDController(kP, kI, kD)
+    val pidController: PIDController by lazy { buildPIDController() }
+    val simpleFeedforward: SimpleMotorFeedforward by lazy { buildSimpleFeedforward() }
+    val armFeedforward: ArmFeedforward by lazy { buildArmFeedforward() }
+    val elevatorFeedforward: ElevatorFeedforward by lazy { buildElevatorFeedforward() }
 
-    fun buildSimpleFeedforward() = SimpleMotorFeedforward(kS, kV, kA)
+    private fun buildPIDController() = PIDController(kP, kI, kD)
 
-    fun buildArmFeedforward() = ArmFeedforward(kS, kG, kV, kA)
+    private fun buildSimpleFeedforward() = SimpleMotorFeedforward(kS, kV, kA)
 
-    fun buildElevatorFeedforward() = ElevatorFeedforward(kS, kG, kV, kA)
+    private fun buildArmFeedforward() = ArmFeedforward(kS, kG, kV, kA)
+
+    private fun buildElevatorFeedforward() = ElevatorFeedforward(kS, kG, kV, kA)
 }
